@@ -5,10 +5,8 @@ const { spawn } = require('child_process');
 
 const app = express();
 
-// Increase the limit for JSON payload to handle larger images
-app.use(bodyParser.json({ limit: '50mb' }));  // Adjust the size as needed
+app.use(bodyParser.json({ limit: '50mb' }));
 
-// MySQL Database Configuration
 const db = mysql.createConnection({
   host: 'monorail.proxy.rlwy.net', 
   user: 'root',                    
@@ -18,17 +16,15 @@ const db = mysql.createConnection({
   connectTimeout: 10000,
 });
 
-// Connect to the database
 db.connect(err => {
   if (err) {
     console.error('Failed to connect to database:', err);
-    process.exit(1); // Exit if the database connection fails
+    process.exit(1);
   } else {
     console.log('Connected to the database.');
   }
 });
 
-// Face processing and registration
 app.post('/register', (req, res) => {
   const { real_name, unique_code, image } = req.body;
 
@@ -39,7 +35,6 @@ app.post('/register', (req, res) => {
     });
   }
 
-  // Call the Python script to process the face
   const python = spawn('python', ['face_processor.py']);
 
   python.stdin.write(JSON.stringify({ image }));
@@ -63,8 +58,6 @@ app.post('/register', (req, res) => {
       }
 
       const face_embedding = result.face_embedding;
-
-      // Check if the unique code exists
       const checkQuery = 'SELECT * FROM users WHERE unique_code = ?';
 
       db.query(checkQuery, [unique_code], (err, results) => {
@@ -76,7 +69,6 @@ app.post('/register', (req, res) => {
           return res.status(400).json({ status: 'error', message: 'Unique code not found. Registration failed.' });
         }
 
-        // Unique code exists, update the user with real_name and face_embedding
         const updateQuery = 'UPDATE users SET real_name = ?, face_embedding = ? WHERE unique_code = ?';
 
         db.query(updateQuery, [real_name, JSON.stringify(face_embedding), unique_code], (err) => {
@@ -94,7 +86,6 @@ app.post('/register', (req, res) => {
   });
 });
 
-// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
